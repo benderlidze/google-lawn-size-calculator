@@ -1,0 +1,276 @@
+<!doctype html>
+<html>
+
+<head>
+    <title>Drawing Tools</title>
+    <script src="https://polyfill.io/v3/polyfill.min.js?features=default"></script>
+</head>
+
+<style>
+    #map {
+        height: 600px;
+    }
+
+    html,
+    body {
+        height: 100%;
+        margin: 0;
+        padding: 0;
+        font-family: Arial, Helvetica, sans-serif;
+    }
+
+    #poly-info {
+        margin: 10px;
+        padding: 10px;
+        border: 1px solid #333;
+
+    }
+
+    .search {
+        margin-top: 10px;
+        margin-left: 10px;
+        margin-right: 10px;
+        width: 300px;
+        height: 40px;
+        font-size: 16px;
+        padding-left: 10px;
+        border-radius: 5px;
+        border: 1px solid #333;
+        outline: none;
+        box-shadow: none;
+        font-family: Arial, Helvetica, sans-serif;
+        font-weight: 400;
+    }
+
+    .draw-button {
+        margin-top: 10px;
+        margin-left: 10px;
+        margin-right: 10px;
+        width: 100px;
+        height: 44px;
+        font-size: 16px;
+        padding-left: 10px;
+        border-radius: 5px;
+        border: 1px solid #333;
+        outline: none;
+        box-shadow: none;
+        font-family: Arial, Helvetica, sans-serif;
+        font-weight: 400;
+        cursor: pointer;
+    }
+
+    .remove-button {
+        width: 20px;
+        height: 20px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        border: 1px solid #333;
+        background-color: white;
+        padding: 3px;
+        border-radius: 5px;
+    }
+
+    .polygon-info {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        background-color: #eee;
+        padding: 5px;
+        margin-bottom: 5px;
+    }
+</style>
+
+<body>
+
+
+    <div id="map"></div>
+
+    <div id="poly-info">
+        <h2>How to Use this Tool</h2>
+        <ol>
+            <li>Search your address.</li>
+            <li>Click “Draw”, then plot the perimeter of your yard.</li>
+        </ol>
+        <div id="areas"></div>
+    </div>
+
+
+    <script>
+        let map;
+        let editablePolygon;
+
+        const areas = document.getElementById("areas");
+
+        const allShapes = new Proxy([], {
+            set: function (target, key, value) {
+                target[key] = value;
+                updateArea();
+                return true;
+            },
+        });
+
+        function initMap() {
+            map = new google.maps.Map(document.getElementById("map"), {
+                center: { lat: -34.45854415667353, lng: 150.81064036238521 },
+                zoom: 19,
+                mapTypeId: google.maps.MapTypeId.SATELLITE,
+                tilt: 0,
+                disableDefaultUI: true,
+                zoomControl: true,
+            });
+            const drawingManager = new google.maps.drawing.DrawingManager({
+                drawingMode: google.maps.drawing.OverlayType.POLYGON,
+                drawingControl: false,
+                drawingControlOptions: {
+                    position: google.maps.ControlPosition.TOP_CENTER,
+                    drawingModes: [],
+                },
+                polygonOptions: {
+                    editable: true,
+                },
+            });
+            drawingManager.setMap(map);
+            drawingManager.setDrawingMode(null);
+
+            google.maps.event.addListener(
+                drawingManager,
+                "overlaycomplete",
+                function (e) {
+                    drawingManager.setDrawingMode(null);
+                    const newShape = e.overlay;
+                    newShape.setOptions({
+                        editable: true,
+                        draggable: true,
+                    });
+                    newShape.type = e.type;
+
+                    google.maps.event.addListener(
+                        newShape.getPath(),
+                        "insert_at",
+                        updateArea
+                    );
+                    google.maps.event.addListener(newShape.getPath(), "set_at", updateArea);
+
+                    allShapes.push(newShape);
+                    updateArea()
+                }
+            );
+
+            const input = document.createElement("input");
+            input.className = "search";
+            input.type = "text";
+            input.placeholder = "Search Address";
+            map.controls[google.maps.ControlPosition.TOP_LEFT].push(input);
+            const autocomplete = new google.maps.places.Autocomplete(input);
+            google.maps.event.addListener(autocomplete, "place_changed", function (e) {
+                var place = autocomplete.getPlace();
+                const loc = place.geometry.location;
+                map.setCenter(place.geometry.location);
+                map.setZoom(16);
+            });
+
+            const drawButton = document.createElement("button");
+            drawButton.className = "draw-button";
+            drawButton.innerHTML = "Draw";
+            drawButton.onclick = function () {
+                drawingManager.setDrawingMode(
+                    google.maps.drawing.OverlayType.POLYGON
+                );
+
+            };
+            map.controls[google.maps.ControlPosition.TOP_LEFT].push(drawButton);
+
+        }
+
+        function updateArea() {
+            let totalArea = 0;
+            areas.innerHTML = "";
+            allShapes.forEach((poly) => {
+                const area = google.maps.geometry.spherical.computeArea(poly.getPath());
+                const div = document.createElement("div");
+                div.className = "polygon-info";
+
+                const areaText = document.createElement("div");
+                areaText.innerHTML = `${area.toFixed(2)} m<sup>2</sup>`;
+
+                const removeButton = document.createElement("div");
+                removeButton.innerHTML = ` <svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" version="1.1" width="100%"
+                        height="100%" viewBox="0 0 256 256" xml:space="preserve">
+                    <g style="stroke: none; stroke-width: 0; stroke-dasharray: none; stroke-linecap: butt; stroke-linejoin: miter; stroke-miterlimit: 10; fill: none; fill-rule: nonzero; opacity: 1;"
+                        transform="translate(1.4065934065934016 1.4065934065934016) scale(2.81 2.81)">
+                        <path
+                            d="M 64.71 90 H 25.291 c -4.693 0 -8.584 -3.67 -8.859 -8.355 l -3.928 -67.088 c -0.048 -0.825 0.246 -1.633 0.812 -2.234 c 0.567 -0.601 1.356 -0.941 2.183 -0.941 h 59.002 c 0.826 0 1.615 0.341 2.183 0.941 c 0.566 0.601 0.86 1.409 0.813 2.234 l -3.928 67.089 C 73.294 86.33 69.403 90 64.71 90 z M 18.679 17.381 l 3.743 63.913 C 22.51 82.812 23.771 84 25.291 84 H 64.71 c 1.52 0 2.779 -1.188 2.868 -2.705 l 3.742 -63.914 H 18.679 z"
+                            style="stroke: none; stroke-width: 1; stroke-dasharray: none; stroke-linecap: butt; stroke-linejoin: miter; stroke-miterlimit: 10; fill: rgb(0,0,0); fill-rule: nonzero; opacity: 1;"
+                            transform=" matrix(1 0 0 1 0 0) " stroke-linecap="round" />
+                        <path
+                            d="M 80.696 17.381 H 9.304 c -1.657 0 -3 -1.343 -3 -3 s 1.343 -3 3 -3 h 71.393 c 1.657 0 3 1.343 3 3 S 82.354 17.381 80.696 17.381 z"
+                            style="stroke: none; stroke-width: 1; stroke-dasharray: none; stroke-linecap: butt; stroke-linejoin: miter; stroke-miterlimit: 10; fill: rgb(0,0,0); fill-rule: nonzero; opacity: 1;"
+                            transform=" matrix(1 0 0 1 0 0) " stroke-linecap="round" />
+                        <path
+                            d="M 58.729 17.381 H 31.271 c -1.657 0 -3 -1.343 -3 -3 V 8.789 C 28.271 3.943 32.214 0 37.061 0 h 15.879 c 4.847 0 8.789 3.943 8.789 8.789 v 5.592 C 61.729 16.038 60.386 17.381 58.729 17.381 z M 34.271 11.381 h 21.457 V 8.789 C 55.729 7.251 54.478 6 52.939 6 H 37.061 c -1.538 0 -2.789 1.251 -2.789 2.789 V 11.381 z"
+                            style="stroke: none; stroke-width: 1; stroke-dasharray: none; stroke-linecap: butt; stroke-linejoin: miter; stroke-miterlimit: 10; fill: rgb(0,0,0); fill-rule: nonzero; opacity: 1;"
+                            transform=" matrix(1 0 0 1 0 0) " stroke-linecap="round" />
+                        <path
+                            d="M 58.33 74.991 c -0.06 0 -0.118 -0.002 -0.179 -0.005 c -1.653 -0.097 -2.916 -1.517 -2.819 -3.171 l 2.474 -42.244 c 0.097 -1.655 1.508 -2.933 3.171 -2.819 c 1.653 0.097 2.916 1.516 2.819 3.17 l -2.474 42.245 C 61.229 73.761 59.906 74.991 58.33 74.991 z"
+                            style="stroke: none; stroke-width: 1; stroke-dasharray: none; stroke-linecap: butt; stroke-linejoin: miter; stroke-miterlimit: 10; fill: rgb(0,0,0); fill-rule: nonzero; opacity: 1;"
+                            transform=" matrix(1 0 0 1 0 0) " stroke-linecap="round" />
+                        <path
+                            d="M 31.669 74.991 c -1.577 0 -2.898 -1.23 -2.992 -2.824 l -2.473 -42.245 c -0.097 -1.654 1.165 -3.073 2.819 -3.17 c 1.646 -0.111 3.073 1.165 3.17 2.819 l 2.473 42.244 c 0.097 1.654 -1.165 3.074 -2.819 3.171 C 31.788 74.989 31.729 74.991 31.669 74.991 z"
+                            style="stroke: none; stroke-width: 1; stroke-dasharray: none; stroke-linecap: butt; stroke-linejoin: miter; stroke-miterlimit: 10; fill: rgb(0,0,0); fill-rule: nonzero; opacity: 1;"
+                            transform=" matrix(1 0 0 1 0 0) " stroke-linecap="round" />
+                        <path
+                            d="M 45 74.991 c -1.657 0 -3 -1.343 -3 -3 V 29.747 c 0 -1.657 1.343 -3 3 -3 c 1.657 0 3 1.343 3 3 v 42.244 C 48 73.648 46.657 74.991 45 74.991 z"
+                            style="stroke: none; stroke-width: 1; stroke-dasharray: none; stroke-linecap: butt; stroke-linejoin: miter; stroke-miterlimit: 10; fill: rgb(0,0,0); fill-rule: nonzero; opacity: 1;"
+                            transform=" matrix(1 0 0 1 0 0) " stroke-linecap="round" />
+                    </g>
+                </svg>`;
+                removeButton.className = "remove-button";
+                removeButton.onclick = function () {
+                    deleteSelectedShape(poly)
+                }
+
+                div.appendChild(areaText);
+                div.appendChild(removeButton);
+
+                areas.appendChild(div);
+
+                totalArea += area;
+
+            })
+
+
+            const totalAreaDiv = document.createElement("div");
+            totalAreaDiv.innerHTML = `<b>Total Area:</b> ${totalArea.toFixed(2)} m<sup>2</sup>`;
+
+            areas.appendChild(totalAreaDiv);
+        }
+
+        //delete selected shape
+        function deleteSelectedShape(poly) {
+            if (!poly) return;
+            const index = allShapes.indexOf(poly);
+            allShapes.splice(index, 1);
+            poly && poly.setMap(null);
+        }
+
+        //set selection to a shape
+        function setSelection(shape) {
+            if (!shape) return;
+            selectedShape.polygon = shape;
+            shape.setEditable(true);
+        }
+
+
+        window.initMap = initMap;
+
+    </script>
+
+    <script
+        src="https://maps.googleapis.com/maps/api/js?key=AIzaSyDaT_HTZwFojXmvYIhwWudK00vFXzMmOKc&callback=initMap&libraries=places,drawing,geometry&v=weekly"
+        async></script>
+
+</body>
+
+</html>
