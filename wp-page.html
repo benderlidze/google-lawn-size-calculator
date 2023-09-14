@@ -1,24 +1,9 @@
-<!doctype html>
-<html>
-
-<head>
-    <title>Drawing Tools</title>
-    <script src="https://polyfill.io/v3/polyfill.min.js?features=default"></script>
-</head>
-
 <style>
     #map {
         height: 600px;
     }
 
-    html,
-    body {
-        height: 100%;
-        margin: 0;
-        padding: 0;
-        font-family: Arial, Helvetica, sans-serif;
-    }
-
+   
     #poly-info {
         margin: 10px;
         padding: 10px;
@@ -26,11 +11,11 @@
 
     }
 
-    .search {
-        margin-top: 10px;
-        margin-left: 10px;
+    .search-input {
+        margin-top: 10px !important;
+        margin-left: 10px !important;
         margin-right: 10px;
-        width: 300px;
+        max-width:300px !important;
         height: 40px;
         font-size: 16px;
         padding-left: 10px;
@@ -47,7 +32,7 @@
         margin-left: 10px;
         margin-right: 10px;
         width: 100px;
-        height: 44px;
+        height: 40px;
         font-size: 16px;
         padding-left: 10px;
         border-radius: 5px;
@@ -81,11 +66,7 @@
         margin-bottom: 5px;
     }
 </style>
-
-<body>
-
-
-    <div id="map"></div>
+ <div id="map"></div>
 
     <div id="poly-info">
         <h2>How to Use this Tool</h2>
@@ -109,22 +90,16 @@
                 updateArea();
                 return true;
             },
-        }); 37.68994907533684, -97.31111351078745
+        });
 
         function initMap() {
             map = new google.maps.Map(document.getElementById("map"), {
-                center: { lat: 37.68994907533684, lng: -97.31111351078745 },
-                zoom: 10,
-                mapTypeId: google.maps.MapTypeId.HYBRID,
+                center: { lat: -34.45854415667353, lng: 150.81064036238521 },
+                zoom: 19,
+                mapTypeId: google.maps.MapTypeId.SATELLITE,
                 tilt: 0,
                 disableDefaultUI: true,
                 zoomControl: true,
-                mapTypeControl: true,
-                mapTypeControlOptions: {
-                    mapTypeIds: [google.maps.MapTypeId.HYBRID, google.maps.MapTypeId.ROADMAP, google.maps.MapTypeId.SATELLITE, google.maps.MapTypeId.TERRAIN],
-                    position: google.maps.ControlPosition.LEFT_TOP,
-                    style: google.maps.MapTypeControlStyle.DEFAULT
-                }
             });
             const drawingManager = new google.maps.drawing.DrawingManager({
                 drawingMode: google.maps.drawing.OverlayType.POLYGON,
@@ -165,7 +140,7 @@
             );
 
             const input = document.createElement("input");
-            input.className = "search";
+            input.className = "search-input";
             input.type = "text";
             input.placeholder = "Search Address";
             map.controls[google.maps.ControlPosition.TOP_LEFT].push(input);
@@ -192,21 +167,17 @@
 
         function updateArea() {
             let totalArea = 0;
-            let totalPerimeter = 0;
-
             areas.innerHTML = "";
             allShapes.forEach((poly) => {
-                const area = google.maps.geometry.spherical.computeArea(poly.getPath()) * 10.7639;
-                const perimeter = google.maps.geometry.spherical.computeLength(poly.getPath()) * 3.28084;
-
+                const area = google.maps.geometry.spherical.computeArea(poly.getPath());
                 const div = document.createElement("div");
                 div.className = "polygon-info";
 
                 const areaText = document.createElement("div");
-                areaText.innerHTML = `${area.toFixed(2)} ft<sup>2</sup>`;
+                areaText.innerHTML = `${area.toFixed(2)} m<sup>2</sup>`;
 
                 const removeButton = document.createElement("div");
-                removeButton.innerHTML = ` <svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" version="1.1" width="100%"
+                removeButton.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" version="1.1" width="100%"
                         height="100%" viewBox="0 0 256 256" xml:space="preserve">
                     <g style="stroke: none; stroke-width: 0; stroke-dasharray: none; stroke-linecap: butt; stroke-linejoin: miter; stroke-miterlimit: 10; fill: none; fill-rule: nonzero; opacity: 1;"
                         transform="translate(1.4065934065934016 1.4065934065934016) scale(2.81 2.81)">
@@ -247,20 +218,14 @@
                 areas.appendChild(div);
 
                 totalArea += area;
-                totalPerimeter += perimeter;
-
 
             })
 
 
             const totalAreaDiv = document.createElement("div");
-            totalAreaDiv.innerHTML = `<b>Total Area:</b> ${totalArea.toFixed(2)} ft<sup>2</sup>`;
-
-            const totalPerimeterDiv = document.createElement("div");
-            totalPerimeterDiv.innerHTML = `<b>Total Perimeter:</b> ${totalPerimeter.toFixed(2)} ft`;
+            totalAreaDiv.innerHTML = `<b>Total Area:</b> ${totalArea.toFixed(2)} m<sup>2</sup>`;
 
             areas.appendChild(totalAreaDiv);
-            areas.appendChild(totalPerimeterDiv);
         }
 
         //delete selected shape
@@ -286,7 +251,3 @@
     <script
         src="https://maps.googleapis.com/maps/api/js?key=AIzaSyDaT_HTZwFojXmvYIhwWudK00vFXzMmOKc&callback=initMap&libraries=places,drawing,geometry&v=weekly"
         async></script>
-
-</body>
-
-</html>
